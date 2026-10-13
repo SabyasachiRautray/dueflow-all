@@ -1,0 +1,10 @@
+const express = require("express");
+const router = express.Router();
+const controller = require("../controllers").invoiceController;
+const authenticateToken = require("../middleware/authMiddleware");
+router.post("/", authenticateToken, controller.create);
+router.get("/", authenticateToken, controller.getAll);
+router.get("/:id", authenticateToken, controller.getById);
+router.put("/:id", authenticateToken, controller.update);
+router.delete("/:id", authenticateToken, controller.remove);
+module.exports = router;
