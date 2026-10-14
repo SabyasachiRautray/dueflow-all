@@ -1,34 +1,30 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
-from app.agent import run_dueflow_agent
+from app import data
+from app.agent import investigate
 
-app = FastAPI(
-    title="Dueflow Agent API",
-    description="Autonomous MSME invoice workflow prototype",
-    version="0.1.0",
-)
+app = FastAPI(title="Dueflow Fraud Investigator", version="0.2.0")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
-class AgentRequest(BaseModel):
-    goal: str = Field(min_length=5)
-    budget: float = Field(gt=0)
+class InvestigateRequest(BaseModel):
+    invoice_id: str
+    simulate_registry_failure: bool = False
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "agent": "Dueflow"}
+    return {"status": "ok", "agent": "Dueflow Fraud Investigator"}
 
 
-@app.post("/agent/run")
-def run_agent(request: AgentRequest):
-    try:
-        return run_dueflow_agent(
-            goal=request.goal,
-            budget=request.budget,
-        )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Agent execution failed: {str(exc)}",
-        ) from exc
+@app.get("/cases")
+def cases():
+    return [{"invoice_id": i["id"], "invoice_no": i["invoice_no"], "vendor_id": i["vendor_id"],
+             "amount": i["amount"], "status": i["status"]} for i in data.INVOICES if i["status"] == "pending"]
+
+
+@app.post("/investigate")
+def run(req: InvestigateRequest):
+    return investigate(req.invoice_id, req.simulate_registry_failure)
